@@ -3,14 +3,23 @@ package routes
 import (
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/saleh-ghazimoradi/X-Gopher/docs"
+	"github.com/saleh-ghazimoradi/X-Gopher/internal/gateway/middlewares"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/helper"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"net/http"
 )
 
-type Register struct{}
+type Register struct {
+	middlewares *middlewares.Middleware
+}
 
 type Options func(*Register)
+
+func WithMiddlewares(middlewares *middlewares.Middleware) Options {
+	return func(r *Register) {
+		r.middlewares = middlewares
+	}
+}
 
 func (r *Register) RegisterRoutes() http.Handler {
 	router := httprouter.New()
@@ -29,7 +38,7 @@ func (r *Register) RegisterRoutes() http.Handler {
 		http.ServeFile(w, r, "./docs/rapidoc.html")
 	}))
 
-	return router
+	return r.middlewares.Recover(r.middlewares.Logging(r.middlewares.CORS(r.middlewares.RateLimit(router))))
 }
 
 func NewRegister(opts ...Options) *Register {
