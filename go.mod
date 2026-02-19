@@ -8,6 +8,8 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.6
+	github.com/tomasen/realip v0.0.0-20180522021738-f0c99a92ddce
+	golang.org/x/time v0.14.0
 )
 
 require (
