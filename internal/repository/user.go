@@ -15,6 +15,7 @@ type UserRepository interface {
 	CreateUser(ctx context.Context, user *domain.User) error
 	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
 	GetUserById(ctx context.Context, id string) (*domain.User, error)
+	UpdateUser(ctx context.Context, user *domain.User) error
 }
 
 type userRepository struct {
@@ -68,6 +69,32 @@ func (u *userRepository) GetUserById(ctx context.Context, id string) (*domain.Us
 		return nil, err
 	}
 	return mongoDTO.FromUserDTOToCore(&userDTO), nil
+}
+
+func (u *userRepository) UpdateUser(ctx context.Context, user *domain.User) error {
+	oid, err := bson.ObjectIDFromHex(user.Id)
+	if err != nil {
+		return fmt.Errorf("invalid user id: %w", err)
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"first_name": user.FirstName,
+			"last_name":  user.LastName,
+			"image_url":  user.ImageUrl,
+			"bio":        user.Bio,
+		},
+	}
+
+	result, err := u.collection.UpdateOne(ctx, bson.M{"_id": oid}, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return ErrRecordNotFound
+	}
+
+	return nil
 }
 
 func (u *userRepository) isDuplicateEmailError(err error) bool {
