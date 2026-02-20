@@ -10,10 +10,17 @@ import (
 )
 
 type Register struct {
+	authRoute   *AuthRoute
 	middlewares *middlewares.Middleware
 }
 
 type Options func(*Register)
+
+func WithAuthRoute(authRoute *AuthRoute) Options {
+	return func(r *Register) {
+		r.authRoute = authRoute
+	}
+}
 
 func WithMiddlewares(middlewares *middlewares.Middleware) Options {
 	return func(r *Register) {
@@ -38,6 +45,7 @@ func (r *Register) RegisterRoutes() http.Handler {
 		http.ServeFile(w, r, "./docs/rapidoc.html")
 	}))
 
+	r.authRoute.AuthRoutes(router)
 	return r.middlewares.Recover(r.middlewares.Logging(r.middlewares.CORS(r.middlewares.RateLimit(router))))
 }
 
