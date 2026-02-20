@@ -1,11 +1,16 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"github.com/saleh-ghazimoradi/X-Gopher/config"
+	"github.com/saleh-ghazimoradi/X-Gopher/infra/mongodb"
+	"github.com/saleh-ghazimoradi/X-Gopher/internal/gateway/handlers"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/gateway/middlewares"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/gateway/routes"
+	"github.com/saleh-ghazimoradi/X-Gopher/internal/repository"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/server"
+	"github.com/saleh-ghazimoradi/X-Gopher/internal/service"
 	"log/slog"
 	"os"
 
@@ -27,9 +32,43 @@ var httpCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		mongo := mongodb.NewMongoDB(
+			mongodb.WithHost(cfg.MongoDB.Host),
+			mongodb.WithPort(cfg.MongoDB.Port),
+			mongodb.WithUser(cfg.MongoDB.User),
+			mongodb.WithPass(cfg.MongoDB.Pass),
+			mongodb.WithDBName(cfg.MongoDB.DBName),
+			mongodb.WithAuthSource(cfg.MongoDB.AuthSource),
+			mongodb.WithMaxPoolSize(cfg.MongoDB.MaxPoolSize),
+			mongodb.WithMinPoolSize(cfg.MongoDB.MinPoolSize),
+			mongodb.WithTimeout(cfg.MongoDB.Timeout),
+		)
+
+		client, mongodb, err := mongo.Connect()
+		if err != nil {
+			logger.Error("Failed to connect to MongoDB", "error", err)
+			os.Exit(1)
+		}
+
+		defer func() {
+			if err := client.Disconnect(context.Background()); err != nil {
+				logger.Error("Failed to disconnect from MongoDB", "error", err)
+				os.Exit(1)
+			}
+		}()
+
 		middleware := middlewares.NewMiddleware(cfg, logger)
 
+		tokenRepository := repository.NewTokenRepository(mongodb, "token")
+		userRepository := repository.NewUserRepository(mongodb, "user")
+
+		authService := service.NewAuthService(cfg, userRepository, tokenRepository)
+
+		authHandler := handlers.NewAuthHandler(authService)
+		authRoute := routes.NewAuthRoute(authHandler)
+
 		register := routes.NewRegister(
+			routes.WithAuthRoute(authRoute),
 			routes.WithMiddlewares(middleware),
 		)
 
