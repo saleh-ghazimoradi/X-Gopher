@@ -47,6 +47,10 @@ func validatePassword(v *helper.Validator, password string) {
 	v.Check(len(password) <= 72, "password", "must be at least 32 characters")
 }
 
+func validateRefreshToken(v *helper.Validator, refreshToken string) {
+	v.Check(refreshToken != "", "refresh_token", "required")
+}
+
 func ValidateRegisterReq(v *helper.Validator, req *RegisterReq) {
 	validateFirstName(v, req.FirstName)
 	validateLastName(v, req.LastName)
@@ -57,4 +61,8 @@ func ValidateRegisterReq(v *helper.Validator, req *RegisterReq) {
 func ValidateLoginReq(v *helper.Validator, req *LoginReq) {
 	validateEmail(v, req.Email)
 	validatePassword(v, req.Password)
+}
+
+func ValidateRefreshTokenReq(v *helper.Validator, req *RefreshTokenReq) {
+	validateRefreshToken(v, req.RefreshToken)
 }
