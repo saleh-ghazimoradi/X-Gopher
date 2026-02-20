@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/domain"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/repository/mongoDTO"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -13,6 +14,7 @@ import (
 type UserRepository interface {
 	CreateUser(ctx context.Context, user *domain.User) error
 	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
+	GetUserById(ctx context.Context, id string) (*domain.User, error)
 }
 
 type userRepository struct {
@@ -50,6 +52,21 @@ func (u *userRepository) GetUserByEmail(ctx context.Context, email string) (*dom
 		return nil, err
 	}
 
+	return mongoDTO.FromUserDTOToCore(&userDTO), nil
+}
+
+func (u *userRepository) GetUserById(ctx context.Context, id string) (*domain.User, error) {
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id: %w", err)
+	}
+	var userDTO mongoDTO.User
+	if err := u.collection.FindOne(ctx, bson.M{"_id": oid}).Decode(&userDTO); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrRecordNotFound
+		}
+		return nil, err
+	}
 	return mongoDTO.FromUserDTOToCore(&userDTO), nil
 }
 
