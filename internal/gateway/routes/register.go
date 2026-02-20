@@ -11,6 +11,7 @@ import (
 
 type Register struct {
 	authRoute   *AuthRoute
+	userRoute   *UserRoute
 	middlewares *middlewares.Middleware
 }
 
@@ -19,6 +20,12 @@ type Options func(*Register)
 func WithAuthRoute(authRoute *AuthRoute) Options {
 	return func(r *Register) {
 		r.authRoute = authRoute
+	}
+}
+
+func WithUserRoute(userRoute *UserRoute) Options {
+	return func(r *Register) {
+		r.userRoute = userRoute
 	}
 }
 
@@ -46,6 +53,7 @@ func (r *Register) RegisterRoutes() http.Handler {
 	}))
 
 	r.authRoute.AuthRoutes(router)
+	r.userRoute.UserRoutes(router)
 	return r.middlewares.Recover(r.middlewares.Logging(r.middlewares.CORS(r.middlewares.RateLimit(router))))
 }
 
