@@ -63,12 +63,17 @@ var httpCmd = &cobra.Command{
 		userRepository := repository.NewUserRepository(mongodb, "user")
 
 		authService := service.NewAuthService(cfg, userRepository, tokenRepository)
+		userService := service.NewUserService(userRepository)
 
 		authHandler := handlers.NewAuthHandler(authService)
+		userHandler := handlers.NewUserHandler(userService)
+
 		authRoute := routes.NewAuthRoute(authHandler)
+		userRoute := routes.NewUserRoute(middleware, userHandler)
 
 		register := routes.NewRegister(
 			routes.WithAuthRoute(authRoute),
+			routes.WithUserRoute(userRoute),
 			routes.WithMiddlewares(middleware),
 		)
 
