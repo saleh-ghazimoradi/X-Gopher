@@ -99,6 +99,22 @@ func (u *UserHandler) FollowUser(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "Follow status toggled successfully", resp)
 }
 
+func (u *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) {
+	userId, exists := utils.UserIdFromContext(r.Context())
+	if !exists {
+		helper.BadRequestResponse(w, "Invalid user id", errors.New("user id not found in context"))
+		return
+	}
+
+	users, err := u.userService.GetSuggestedUsers(r.Context(), userId)
+	if err != nil {
+		helper.InternalServerError(w, "Failed to get suggested users", err)
+		return
+	}
+
+	helper.SuccessResponse(w, "Suggested users retrieved successfully", users)
+}
+
 func NewUserHandler(userService service.UserService) *UserHandler {
 	return &UserHandler{
 		userService: userService,

@@ -11,6 +11,7 @@ import (
 
 type UserService interface {
 	GetUserById(ctx context.Context, id string) (*dto.UserResp, error)
+	GetSuggestedUsers(ctx context.Context, userId string) ([]*dto.UserResp, error)
 	UpdateUser(ctx context.Context, id string, input *dto.UpdateUserReq) (*dto.UserResp, error)
 	ToggleFollow(ctx context.Context, currentUserId, targetUserId string) (map[string]*dto.UserResp, error)
 }
@@ -26,6 +27,59 @@ func (u *userService) GetUserById(ctx context.Context, id string) (*dto.UserResp
 	}
 
 	return u.toUserResp(user), nil
+}
+
+func (u *userService) GetSuggestedUsers(ctx context.Context, userId string) ([]*dto.UserResp, error) {
+	mainUser, err := u.userRepository.GetUserById(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	suggestionSet := make(map[string]struct{})
+
+	// For each user I follow
+	for _, followedID := range mainUser.Following {
+		followedUser, err := u.userRepository.GetUserById(ctx, followedID)
+		if err != nil {
+			continue
+		}
+
+		// Their following
+		for _, id := range followedUser.Following {
+			suggestionSet[id] = struct{}{}
+		}
+
+		// Their followers
+		for _, id := range followedUser.Followers {
+			suggestionSet[id] = struct{}{}
+		}
+	}
+
+	// Remove:
+	// - myself
+	// - already followed users
+	delete(suggestionSet, userId)
+	for _, id := range mainUser.Following {
+		delete(suggestionSet, id)
+	}
+
+	// Convert set to slice
+	ids := make([]string, 0, len(suggestionSet))
+	for id := range suggestionSet {
+		ids = append(ids, id)
+	}
+
+	users, err := u.userRepository.GetUsersByIds(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]*dto.UserResp, 0, len(users))
+	for _, user := range users {
+		resp = append(resp, u.toUserResp(user))
+	}
+
+	return resp, nil
 }
 
 func (u *userService) UpdateUser(ctx context.Context, id string, input *dto.UpdateUserReq) (*dto.UserResp, error) {
@@ -55,19 +109,6 @@ func (u *userService) UpdateUser(ctx context.Context, id string, input *dto.Upda
 	}
 
 	return u.toUserResp(user), nil
-}
-
-func (u *userService) toUserResp(input *domain.User) *dto.UserResp {
-	return &dto.UserResp{
-		Id:        input.Id,
-		FirstName: input.FirstName,
-		LastName:  input.LastName,
-		Email:     input.Email,
-		ImageUrl:  input.ImageUrl,
-		Bio:       input.Bio,
-		Followers: input.Followers,
-		Following: input.Following,
-	}
 }
 
 func (u *userService) ToggleFollow(ctx context.Context, currentUserId, targetUserId string) (map[string]*dto.UserResp, error) {
@@ -114,6 +155,19 @@ func removeString(slice []string, s string) []string {
 		}
 	}
 	return slice
+}
+
+func (u *userService) toUserResp(input *domain.User) *dto.UserResp {
+	return &dto.UserResp{
+		Id:        input.Id,
+		FirstName: input.FirstName,
+		LastName:  input.LastName,
+		Email:     input.Email,
+		ImageUrl:  input.ImageUrl,
+		Bio:       input.Bio,
+		Followers: input.Followers,
+		Following: input.Following,
+	}
 }
 
 func NewUserService(userRepository repository.UserRepository) UserService {
