@@ -20,6 +20,7 @@ func (u *UserRoute) UserRoutes(router *httprouter.Router) {
 	router.Handler(http.MethodPatch, "/v1/user/:id", u.wrapAuth(u.userHandler.UpdateUser))
 	router.Handler(http.MethodPatch, "/v1/user/:id/following", u.wrapAuth(u.userHandler.FollowUser))
 	router.Handler(http.MethodGet, "/v1/suggest_users", u.wrapAuth(u.userHandler.GetSuggestedUsers))
+	router.Handler(http.MethodDelete, "/v1/user/:id", u.wrapAuth(u.userHandler.DeleteUser))
 }
 
 func (u *UserRoute) wrapAuth(handler http.HandlerFunc) http.Handler {

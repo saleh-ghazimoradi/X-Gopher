@@ -14,6 +14,7 @@ type UserService interface {
 	GetSuggestedUsers(ctx context.Context, userId string) ([]*dto.UserResp, error)
 	UpdateUser(ctx context.Context, id string, input *dto.UpdateUserReq) (*dto.UserResp, error)
 	ToggleFollow(ctx context.Context, currentUserId, targetUserId string) (map[string]*dto.UserResp, error)
+	DeleteUser(ctx context.Context, id string) error
 }
 
 type userService struct {
@@ -146,6 +147,10 @@ func (u *userService) ToggleFollow(ctx context.Context, currentUserId, targetUse
 		"target_user":  u.toUserResp(target),
 		"current_user": u.toUserResp(current),
 	}, nil
+}
+
+func (u *userService) DeleteUser(ctx context.Context, id string) error {
+	return u.userRepository.DeleteUser(ctx, id)
 }
 
 func removeString(slice []string, s string) []string {

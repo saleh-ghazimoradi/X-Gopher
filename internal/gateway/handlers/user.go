@@ -115,6 +115,37 @@ func (u *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) 
 	helper.SuccessResponse(w, "Suggested users retrieved successfully", users)
 }
 
+func (u *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	userId, exists := utils.UserIdFromContext(r.Context())
+	if !exists {
+		helper.BadRequestResponse(w, "Invalid given user id", errors.New("invalid user id"))
+		return
+	}
+
+	id := httprouter.ParamsFromContext(r.Context()).ByName("id")
+	if id == "" {
+		helper.BadRequestResponse(w, "Invalid given user id", errors.New("invalid user id"))
+		return
+	}
+
+	if id != userId {
+		helper.UnauthorizedResponse(w, "You are not authorized to delete this user")
+		return
+	}
+
+	if err := u.userService.DeleteUser(r.Context(), id); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrRecordNotFound):
+			helper.NotFoundResponse(w, "User not found")
+		default:
+			helper.InternalServerError(w, "Failed to delete user", err)
+		}
+		return
+	}
+
+	helper.SuccessResponse(w, "User deleted successfully", nil)
+}
+
 func NewUserHandler(userService service.UserService) *UserHandler {
 	return &UserHandler{
 		userService: userService,

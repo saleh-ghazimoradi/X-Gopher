@@ -19,6 +19,7 @@ type UserRepository interface {
 	UpdateUser(ctx context.Context, user *domain.User) error
 	Follow(ctx context.Context, followerId, followeeId string) error
 	Unfollow(ctx context.Context, followerId, followeeId string) error
+	DeleteUser(ctx context.Context, id string) error
 }
 
 type userRepository struct {
@@ -182,6 +183,24 @@ func (u *userRepository) Unfollow(ctx context.Context, followerId, followeeId st
 		"$pull": bson.M{"following": followeeId},
 	}); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (u *userRepository) DeleteUser(ctx context.Context, id string) error {
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return fmt.Errorf("invalid user id: %w", err)
+	}
+
+	if _, err := u.collection.DeleteOne(ctx, bson.M{"_id": oid}); err != nil {
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			return ErrRecordNotFound
+		default:
+			return err
+		}
 	}
 
 	return nil
