@@ -16,6 +16,8 @@ type UserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
 	GetUserById(ctx context.Context, id string) (*domain.User, error)
 	UpdateUser(ctx context.Context, user *domain.User) error
+	Follow(ctx context.Context, followerId, followeeId string) error
+	Unfollow(ctx context.Context, followerId, followeeId string) error
 }
 
 type userRepository struct {
@@ -92,6 +94,58 @@ func (u *userRepository) UpdateUser(ctx context.Context, user *domain.User) erro
 	}
 	if result.MatchedCount == 0 {
 		return ErrRecordNotFound
+	}
+
+	return nil
+}
+
+func (u *userRepository) Follow(ctx context.Context, followerId, followeeId string) error {
+	followerOId, err := bson.ObjectIDFromHex(followerId)
+	if err != nil {
+		return fmt.Errorf("invalid follower id: %w", err)
+	}
+
+	followeeOId, err := bson.ObjectIDFromHex(followeeId)
+	if err != nil {
+		return fmt.Errorf("invalid followee id: %w", err)
+	}
+
+	if _, err := u.collection.UpdateOne(ctx, bson.M{"_id": followeeOId}, bson.M{
+		"$addToSet": bson.M{"followers": followerId},
+	}); err != nil {
+		return err
+	}
+
+	if _, err := u.collection.UpdateOne(ctx, bson.M{"_id": followerOId}, bson.M{
+		"$addToSet": bson.M{"following": followeeId},
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *userRepository) Unfollow(ctx context.Context, followerId, followeeId string) error {
+	followerOId, err := bson.ObjectIDFromHex(followerId)
+	if err != nil {
+		return fmt.Errorf("invalid follower id: %w", err)
+	}
+
+	followeeOId, err := bson.ObjectIDFromHex(followeeId)
+	if err != nil {
+		return fmt.Errorf("invalid followee id: %w", err)
+	}
+
+	if _, err := u.collection.UpdateOne(ctx, bson.M{"_id": followeeOId}, bson.M{
+		"$pull": bson.M{"followers": followerId},
+	}); err != nil {
+		return err
+	}
+
+	if _, err := u.collection.UpdateOne(ctx, bson.M{"_id": followerOId}, bson.M{
+		"$pull": bson.M{"following": followeeId},
+	}); err != nil {
+		return err
 	}
 
 	return nil

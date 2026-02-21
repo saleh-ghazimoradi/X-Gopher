@@ -2,14 +2,17 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/domain"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/dto"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/repository"
+	"slices"
 )
 
 type UserService interface {
 	GetUserById(ctx context.Context, id string) (*dto.UserResp, error)
 	UpdateUser(ctx context.Context, id string, input *dto.UpdateUserReq) (*dto.UserResp, error)
+	ToggleFollow(ctx context.Context, currentUserId, targetUserId string) (map[string]*dto.UserResp, error)
 }
 
 type userService struct {
@@ -65,6 +68,52 @@ func (u *userService) toUserResp(input *domain.User) *dto.UserResp {
 		Followers: input.Followers,
 		Following: input.Following,
 	}
+}
+
+func (u *userService) ToggleFollow(ctx context.Context, currentUserId, targetUserId string) (map[string]*dto.UserResp, error) {
+	if currentUserId == targetUserId {
+		return nil, repository.ErrCannotFollowSelf
+	}
+
+	current, err := u.userRepository.GetUserById(ctx, currentUserId)
+	if err != nil {
+		return nil, err
+	}
+
+	target, err := u.userRepository.GetUserById(ctx, targetUserId)
+	if err != nil {
+		return nil, err
+	}
+
+	isFollowing := slices.Contains(target.Followers, currentUserId)
+
+	if isFollowing {
+		target.Followers = removeString(target.Followers, currentUserId)
+		current.Following = removeString(current.Following, targetUserId)
+		if err := u.userRepository.Unfollow(ctx, currentUserId, targetUserId); err != nil {
+			return nil, fmt.Errorf("failed to unfollow user: %w", err)
+		}
+	} else {
+		target.Followers = append(target.Followers, currentUserId)
+		current.Following = append(current.Following, targetUserId)
+		if err := u.userRepository.Follow(ctx, currentUserId, targetUserId); err != nil {
+			return nil, fmt.Errorf("failed to follow: %w", err)
+		}
+	}
+
+	return map[string]*dto.UserResp{
+		"target_user":  u.toUserResp(target),
+		"current_user": u.toUserResp(current),
+	}, nil
+}
+
+func removeString(slice []string, s string) []string {
+	for i, v := range slice {
+		if v == s {
+			return append(slice[:i], slice[i+1:]...)
+		}
+	}
+	return slice
 }
 
 func NewUserService(userRepository repository.UserRepository) UserService {

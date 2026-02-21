@@ -70,6 +70,35 @@ func (u *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "user successfully updated", updatedUser)
 }
 
+func (u *UserHandler) FollowUser(w http.ResponseWriter, r *http.Request) {
+	targetId := httprouter.ParamsFromContext(r.Context()).ByName("id")
+	if targetId == "" {
+		helper.BadRequestResponse(w, "Invalid given user id", errors.New("invalid user id"))
+		return
+	}
+
+	currentUserId, exists := utils.UserIdFromContext(r.Context())
+	if !exists {
+		helper.BadRequestResponse(w, "Invalid user id from token", errors.New("user id not found in context"))
+		return
+	}
+
+	resp, err := u.userService.ToggleFollow(r.Context(), currentUserId, targetId)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrRecordNotFound):
+			helper.NotFoundResponse(w, "User not found")
+		case errors.Is(err, repository.ErrCannotFollowSelf):
+			helper.BadRequestResponse(w, "Cannot follow yourself", err)
+		default:
+			helper.InternalServerError(w, "Failed to toggle follow", err)
+		}
+		return
+	}
+
+	helper.SuccessResponse(w, "Follow status toggled successfully", resp)
+}
+
 func NewUserHandler(userService service.UserService) *UserHandler {
 	return &UserHandler{
 		userService: userService,

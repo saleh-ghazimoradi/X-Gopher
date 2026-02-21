@@ -18,6 +18,7 @@ func (u *UserRoute) UserRoutes(router *httprouter.Router) {
 
 	// Protected Routes
 	router.Handler(http.MethodPatch, "/v1/user/:id", u.wrapAuth(u.userHandler.UpdateUser))
+	router.Handler(http.MethodPatch, "/v1/user/:id/following", u.wrapAuth(u.userHandler.FollowUser))
 }
 
 func (u *UserRoute) wrapAuth(handler http.HandlerFunc) http.Handler {
