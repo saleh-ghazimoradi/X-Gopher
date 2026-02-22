@@ -16,7 +16,8 @@ type PostResp struct {
 	Creator      string    `json:"creator"`
 	Title        string    `json:"title"`
 	Message      string    `json:"message"`
-	Name         string    `json:"name"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
 	SelectedFile string    `json:"selected_file"`
 	Likes        []string  `json:"likes"`
 	Comments     []string  `json:"comments"`

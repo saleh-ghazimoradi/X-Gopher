@@ -38,33 +38,26 @@ func (u *userService) GetSuggestedUsers(ctx context.Context, userId string) ([]*
 
 	suggestionSet := make(map[string]struct{})
 
-	// For each user I follow
 	for _, followedID := range mainUser.Following {
 		followedUser, err := u.userRepository.GetUserById(ctx, followedID)
 		if err != nil {
 			continue
 		}
 
-		// Their following
 		for _, id := range followedUser.Following {
 			suggestionSet[id] = struct{}{}
 		}
 
-		// Their followers
 		for _, id := range followedUser.Followers {
 			suggestionSet[id] = struct{}{}
 		}
 	}
 
-	// Remove:
-	// - myself
-	// - already followed users
 	delete(suggestionSet, userId)
 	for _, id := range mainUser.Following {
 		delete(suggestionSet, id)
 	}
 
-	// Convert set to slice
 	ids := make([]string, 0, len(suggestionSet))
 	for id := range suggestionSet {
 		ids = append(ids, id)

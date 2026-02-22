@@ -1,0 +1,79 @@
+package handlers
+
+import (
+	"errors"
+	"github.com/julienschmidt/httprouter"
+	"github.com/saleh-ghazimoradi/X-Gopher/internal/dto"
+	"github.com/saleh-ghazimoradi/X-Gopher/internal/helper"
+	"github.com/saleh-ghazimoradi/X-Gopher/internal/repository"
+	"github.com/saleh-ghazimoradi/X-Gopher/internal/service"
+	"github.com/saleh-ghazimoradi/X-Gopher/utils"
+	"net/http"
+)
+
+type PostHandler struct {
+	postService service.PostService
+}
+
+func (p *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
+	userId, exists := utils.UserIdFromContext(r.Context())
+	if !exists {
+		helper.BadRequestResponse(w, "Invalid user id", errors.New("invalid user id"))
+		return
+	}
+
+	var payload dto.CreatePostReq
+	if err := helper.ReadJSON(w, r, &payload); err != nil {
+		helper.BadRequestResponse(w, "Invalid given payload", err)
+		return
+	}
+
+	post, err := p.postService.CreatePost(r.Context(), userId, &payload)
+	if err != nil {
+		helper.InternalServerError(w, "Failed to create post", err)
+		return
+	}
+
+	helper.CreatedResponse(w, "Post successfully created", post)
+}
+
+func (p *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
+	id := httprouter.ParamsFromContext(r.Context()).ByName("id")
+	if id == "" {
+		helper.BadRequestResponse(w, "Invalid post id", errors.New("invalid post id"))
+		return
+	}
+
+	post, err := p.postService.GetPostById(r.Context(), id)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrRecordNotFound):
+			helper.NotFoundResponse(w, "post not found")
+		default:
+			helper.InternalServerError(w, "Failed to fetch post", err)
+		}
+		return
+	}
+
+	helper.SuccessResponse(w, "Post fetched successfully", post)
+}
+
+func (p *PostHandler) GetAllPosts(w http.ResponseWriter, r *http.Request) {}
+
+func (p *PostHandler) GetPostsUsersBySearch(w http.ResponseWriter, r *http.Request) {}
+
+func (p *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {}
+
+func (p *PostHandler) CommentPost(w http.ResponseWriter, r *http.Request) {}
+
+func (p *PostHandler) LikePost(w http.ResponseWriter, r *http.Request) {}
+
+func (p *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {}
+
+func (p *PostHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {}
+
+func NewPostHandler(postService service.PostService) *PostHandler {
+	return &PostHandler{
+		postService: postService,
+	}
+}

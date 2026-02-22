@@ -12,7 +12,8 @@ type Post struct {
 	Creator      string        `bson:"creator"`
 	Title        string        `bson:"title"`
 	Message      string        `bson:"message"`
-	Name         string        `bson:"name"`
+	FirstName    string        `bson:"first_name"`
+	LastName     string        `bson:"last_name"`
 	SelectedFile string        `bson:"selected_file"`
 	Likes        []string      `bson:"likes"`
 	Comments     []string      `bson:"comments"`
@@ -37,7 +38,8 @@ func FromPostCoreToDTO(input *domain.Post) (*Post, error) {
 		Creator:      input.Creator,
 		Title:        input.Title,
 		Message:      input.Message,
-		Name:         input.Name,
+		FirstName:    input.FirstName,
+		LastName:     input.LastName,
 		SelectedFile: input.SelectedFile,
 		Likes:        input.Likes,
 		Comments:     input.Comments,
@@ -51,7 +53,8 @@ func FromPostDTOToCore(input *Post) *domain.Post {
 		Creator:      input.Creator,
 		Title:        input.Title,
 		Message:      input.Message,
-		Name:         input.Name,
+		FirstName:    input.FirstName,
+		LastName:     input.LastName,
 		SelectedFile: input.SelectedFile,
 		Likes:        input.Likes,
 		Comments:     input.Comments,

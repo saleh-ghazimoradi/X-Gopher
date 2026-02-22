@@ -7,7 +7,8 @@ type Post struct {
 	Creator      string
 	Title        string
 	Message      string
-	Name         string
+	FirstName    string
+	LastName     string
 	SelectedFile string
 	Likes        []string
 	Comments     []string

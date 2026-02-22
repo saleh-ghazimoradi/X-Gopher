@@ -43,6 +43,12 @@ func (u *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	id := httprouter.ParamsFromContext(r.Context()).ByName("id")
+	if id == "" || id != userId {
+		helper.UnauthorizedResponse(w, "You can only update your own profile")
+		return
+	}
+
 	var payload dto.UpdateUserReq
 	if err := helper.ReadJSON(w, r, &payload); err != nil {
 		helper.BadRequestResponse(w, "Invalid given payload", err)
@@ -56,7 +62,7 @@ func (u *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedUser, err := u.userService.UpdateUser(r.Context(), userId, &payload)
+	updatedUser, err := u.userService.UpdateUser(r.Context(), id, &payload)
 	if err != nil {
 		switch {
 		case errors.Is(err, repository.ErrRecordNotFound):
@@ -123,13 +129,8 @@ func (u *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := httprouter.ParamsFromContext(r.Context()).ByName("id")
-	if id == "" {
-		helper.BadRequestResponse(w, "Invalid given user id", errors.New("invalid user id"))
-		return
-	}
-
-	if id != userId {
-		helper.UnauthorizedResponse(w, "You are not authorized to delete this user")
+	if id == "" || id != userId {
+		helper.UnauthorizedResponse(w, "You can only update your own profile")
 		return
 	}
 
