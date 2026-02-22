@@ -90,7 +90,18 @@ func (p *postRepository) ToggleLike(ctx context.Context, postId, userId string) 
 }
 
 func (p *postRepository) AddComment(ctx context.Context, postId, commentId string) error {
-	return nil
+	oid, err := bson.ObjectIDFromHex(postId)
+	if err != nil {
+		return fmt.Errorf("invalid post id: %w", err)
+	}
+
+	_, err = p.collection.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{
+		"$push": bson.M{
+			"comments": commentId,
+		},
+	})
+
+	return err
 }
 
 func (p *postRepository) DeletePost(ctx context.Context, id string) error {
