@@ -74,7 +74,6 @@ func (p *PostHandler) GetAllPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Pagination from query (with safe defaults)
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	if page < 1 {
 		page = 1
@@ -82,7 +81,7 @@ func (p *PostHandler) GetAllPosts(w http.ResponseWriter, r *http.Request) {
 
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit < 1 || limit > 50 {
-		limit = 10 // default (you can change to 2 if you prefer your Fiber default)
+		limit = 10
 	}
 
 	posts, total, err := p.postService.GetAllPosts(r.Context(), userId, page, limit)
@@ -103,7 +102,15 @@ func (p *PostHandler) GetAllPosts(w http.ResponseWriter, r *http.Request) {
 	helper.PaginatedSuccessResponse(w, "Posts retrieved successfully", posts, meta)
 }
 
-func (p *PostHandler) GetPostsUsersBySearch(w http.ResponseWriter, r *http.Request) {}
+func (p *PostHandler) GetPostsUsersBySearch(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("searchQuery")
+	result, err := p.postService.GetPostsUsersBySearch(r.Context(), query)
+	if err != nil {
+		helper.InternalServerError(w, "Search failed", err)
+		return
+	}
+	helper.SuccessResponse(w, "Search result", result)
+}
 
 func (p *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	userId, exists := utils.UserIdFromContext(r.Context())

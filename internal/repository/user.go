@@ -16,6 +16,7 @@ type UserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
 	GetUserById(ctx context.Context, id string) (*domain.User, error)
 	GetUsersByIds(ctx context.Context, ids []string) ([]*domain.User, error)
+	GetUsersBySearch(ctx context.Context, query string) ([]*domain.User, error)
 	UpdateUser(ctx context.Context, user *domain.User) error
 	Follow(ctx context.Context, followerId, followeeId string) error
 	Unfollow(ctx context.Context, followerId, followeeId string) error
@@ -108,6 +109,39 @@ func (u *userRepository) GetUsersByIds(ctx context.Context, ids []string) ([]*do
 	}
 
 	return users, nil
+}
+
+func (u *userRepository) GetUsersBySearch(ctx context.Context, query string) ([]*domain.User, error) {
+	if query == "" {
+		return nil, nil
+	}
+
+	filter := bson.M{
+		"$or": []bson.M{
+			{"first_name": bson.M{"$regex": query, "$options": "i"}},
+			{"last_name": bson.M{"$regex": query, "$options": "i"}},
+			{"email": bson.M{"$regex": query, "$options": "i"}},
+		},
+	}
+
+	cursor, err := u.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var usersDTO []mongoDTO.User
+	if err := cursor.All(ctx, &usersDTO); err != nil {
+		return nil, err
+	}
+
+	users := make([]*domain.User, len(usersDTO))
+	for i, dto := range usersDTO {
+		users[i] = mongoDTO.FromUserDTOToCore(&dto)
+	}
+
+	return users, nil
+
 }
 
 func (u *userRepository) UpdateUser(ctx context.Context, user *domain.User) error {

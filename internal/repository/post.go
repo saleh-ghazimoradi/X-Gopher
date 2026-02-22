@@ -134,7 +134,35 @@ func (p *postRepository) GetFeedPosts(ctx context.Context, creatorIds []string, 
 }
 
 func (p *postRepository) SearchPosts(ctx context.Context, query string) ([]*domain.Post, error) {
-	return nil, nil
+	if query == "" {
+		return nil, nil
+	}
+
+	filter := bson.M{
+		"$or": []bson.M{
+			{"title": bson.M{"$regex": query, "$options": "i"}},
+			{"message": bson.M{"$regex": query, "$options": "i"}},
+		},
+	}
+
+	cursor, err := p.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	defer cursor.Close(ctx)
+
+	var postsDTO []mongoDTO.Post
+	if err := cursor.All(ctx, &postsDTO); err != nil {
+		return nil, err
+	}
+
+	posts := make([]*domain.Post, len(postsDTO))
+	for i, dto := range postsDTO {
+		posts[i] = mongoDTO.FromPostDTOToCore(&dto)
+	}
+
+	return posts, nil
 }
 
 func NewPostRepository(database *mongo.Database, collectionName string) PostRepository {

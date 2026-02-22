@@ -12,6 +12,7 @@ import (
 type PostService interface {
 	CreatePost(ctx context.Context, creatorId string, input *dto.CreatePostReq) (*dto.PostResp, error)
 	GetPostById(ctx context.Context, id string) (*dto.PostResp, error)
+	GetPostsUsersBySearch(ctx context.Context, query string) (map[string]any, error)
 	GetAllPosts(ctx context.Context, userId string, page, limit int) ([]*dto.PostResp, int64, error)
 	UpdatePost(ctx context.Context, id, userId string, input *dto.UpdatePostReq) (*dto.PostResp, error)
 }
@@ -53,6 +54,43 @@ func (p *postService) GetPostById(ctx context.Context, id string) (*dto.PostResp
 	}
 
 	return p.toPostResp(post), nil
+}
+
+func (p *postService) GetPostsUsersBySearch(ctx context.Context, query string) (map[string]any, error) {
+	posts, err := p.postRepository.SearchPosts(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search posts: %w", err)
+	}
+
+	users, err := p.userRepository.GetUsersBySearch(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search users: %w", err)
+	}
+
+	postResp := make([]*dto.PostResp, len(posts))
+	for i, post := range posts {
+		postResp[i] = p.toPostResp(post)
+	}
+
+	userResp := make([]*dto.UserResp, len(users))
+
+	for i, u := range users {
+		userResp[i] = &dto.UserResp{
+			Id:        u.Id,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
+			Email:     u.Email,
+			ImageUrl:  u.ImageUrl,
+			Bio:       u.Bio,
+			Followers: u.Followers,
+			Following: u.Following,
+		}
+	}
+
+	return map[string]interface{}{
+		"user":  userResp,
+		"posts": postResp,
+	}, nil
 }
 
 func (p *postService) GetAllPosts(ctx context.Context, userId string, page, limit int) ([]*dto.PostResp, int64, error) {
