@@ -8,6 +8,7 @@ import (
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/repository/mongoDTO"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type PostRepository interface {
@@ -17,7 +18,7 @@ type PostRepository interface {
 	ToggleLike(ctx context.Context, postId, userId string) error
 	AddComment(ctx context.Context, postId, commentId string) error
 	DeletePost(ctx context.Context, id string) error
-	GetFeedPosts(ctx context.Context, creatorId []string) error
+	GetFeedPosts(ctx context.Context, creatorIds []string, page, limit int) ([]*domain.Post, int64, error)
 	SearchPosts(ctx context.Context, query string) ([]*domain.Post, error)
 }
 
@@ -96,8 +97,40 @@ func (p *postRepository) DeletePost(ctx context.Context, id string) error {
 	return nil
 }
 
-func (p *postRepository) GetFeedPosts(ctx context.Context, creatorId []string) error {
-	return nil
+func (p *postRepository) GetFeedPosts(ctx context.Context, creatorIds []string, page, limit int) ([]*domain.Post, int64, error) {
+	if len(creatorIds) == 0 {
+		return nil, 0, nil
+	}
+
+	filter := bson.M{"creator": bson.M{"$in": creatorIds}}
+
+	total, err := p.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	opts := options.Find().
+		SetSort(bson.M{"_id": -1}).
+		SetSkip(int64((page - 1) * limit)).
+		SetLimit(int64(limit))
+
+	cursor, err := p.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var postsDTO []mongoDTO.Post
+	if err := cursor.All(ctx, &postsDTO); err != nil {
+		return nil, 0, err
+	}
+
+	posts := make([]*domain.Post, len(postsDTO))
+	for i, dto := range postsDTO {
+		posts[i] = mongoDTO.FromPostDTOToCore(&dto)
+	}
+
+	return posts, total, nil
 }
 
 func (p *postRepository) SearchPosts(ctx context.Context, query string) ([]*domain.Post, error) {

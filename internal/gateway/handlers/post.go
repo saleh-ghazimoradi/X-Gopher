@@ -8,7 +8,9 @@ import (
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/repository"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/service"
 	"github.com/saleh-ghazimoradi/X-Gopher/utils"
+	"math"
 	"net/http"
+	"strconv"
 )
 
 type PostHandler struct {
@@ -65,7 +67,41 @@ func (p *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "Post fetched successfully", post)
 }
 
-func (p *PostHandler) GetAllPosts(w http.ResponseWriter, r *http.Request) {}
+func (p *PostHandler) GetAllPosts(w http.ResponseWriter, r *http.Request) {
+	userId := r.URL.Query().Get("id")
+	if userId == "" {
+		helper.BadRequestResponse(w, "user id is required (?id=...)", nil)
+		return
+	}
+
+	// Pagination from query (with safe defaults)
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 50 {
+		limit = 10 // default (you can change to 2 if you prefer your Fiber default)
+	}
+
+	posts, total, err := p.postService.GetAllPosts(r.Context(), userId, page, limit)
+	if err != nil {
+		helper.InternalServerError(w, "Failed to fetch feed", err)
+		return
+	}
+
+	totalPages := int64(math.Ceil(float64(total) / float64(limit)))
+
+	meta := helper.PaginatedMeta{
+		Page:      int64(page),
+		Limit:     int64(limit),
+		Total:     total,
+		TotalPage: totalPages,
+	}
+
+	helper.PaginatedSuccessResponse(w, "Posts retrieved successfully", posts, meta)
+}
 
 func (p *PostHandler) GetPostsUsersBySearch(w http.ResponseWriter, r *http.Request) {}
 

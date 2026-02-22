@@ -12,6 +12,7 @@ import (
 type PostService interface {
 	CreatePost(ctx context.Context, creatorId string, input *dto.CreatePostReq) (*dto.PostResp, error)
 	GetPostById(ctx context.Context, id string) (*dto.PostResp, error)
+	GetAllPosts(ctx context.Context, userId string, page, limit int) ([]*dto.PostResp, int64, error)
 	UpdatePost(ctx context.Context, id, userId string, input *dto.UpdatePostReq) (*dto.PostResp, error)
 }
 
@@ -52,6 +53,28 @@ func (p *postService) GetPostById(ctx context.Context, id string) (*dto.PostResp
 	}
 
 	return p.toPostResp(post), nil
+}
+
+func (p *postService) GetAllPosts(ctx context.Context, userId string, page, limit int) ([]*dto.PostResp, int64, error) {
+	mainUser, err := p.userRepository.GetUserById(ctx, userId)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Build feed: user + everyone they follow
+	feedIds := append([]string{userId}, mainUser.Following...)
+
+	posts, total, err := p.postRepository.GetFeedPosts(ctx, feedIds, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	resp := make([]*dto.PostResp, len(posts))
+	for i, post := range posts {
+		resp[i] = p.toPostResp(post)
+	}
+
+	return resp, total, nil
 }
 
 func (p *postService) UpdatePost(ctx context.Context, id, userId string, input *dto.UpdatePostReq) (*dto.PostResp, error) {
