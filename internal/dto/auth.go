@@ -44,7 +44,7 @@ func validateEmail(v *helper.Validator, email string) {
 func validatePassword(v *helper.Validator, password string) {
 	v.Check(password != "", "password", "required")
 	v.Check(len(password) >= 8, "password", "must be at least 8 characters")
-	v.Check(len(password) <= 72, "password", "must be at least 32 characters")
+	v.Check(len(password) <= 72, "password", "must not exceed 72 characters")
 }
 
 func validateRefreshToken(v *helper.Validator, refreshToken string) {
