@@ -12,6 +12,7 @@ import (
 type PostService interface {
 	CreatePost(ctx context.Context, creatorId string, input *dto.CreatePostReq) (*dto.PostResp, error)
 	GetPostById(ctx context.Context, id string) (*dto.PostResp, error)
+	UpdatePost(ctx context.Context, id, userId string, input *dto.UpdatePostReq) (*dto.PostResp, error)
 }
 
 type postService struct {
@@ -47,6 +48,35 @@ func (p *postService) CreatePost(ctx context.Context, creatorId string, input *d
 func (p *postService) GetPostById(ctx context.Context, id string) (*dto.PostResp, error) {
 	post, err := p.postRepository.GetPostById(ctx, id)
 	if err != nil {
+		return nil, err
+	}
+
+	return p.toPostResp(post), nil
+}
+
+func (p *postService) UpdatePost(ctx context.Context, id, userId string, input *dto.UpdatePostReq) (*dto.PostResp, error) {
+	post, err := p.postRepository.GetPostById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if post.Creator != userId {
+		return nil, fmt.Errorf("post creator does not match")
+	}
+
+	if input.Title != nil {
+		post.Title = *input.Title
+	}
+
+	if input.Message != nil {
+		post.Message = *input.Message
+	}
+
+	if input.SelectedFile != nil {
+		post.SelectedFile = *input.SelectedFile
+	}
+
+	if err := p.postRepository.UpdatePost(ctx, post); err != nil {
 		return nil, err
 	}
 

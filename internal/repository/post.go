@@ -63,7 +63,25 @@ func (p *postRepository) GetPostById(ctx context.Context, id string) (*domain.Po
 }
 
 func (p *postRepository) UpdatePost(ctx context.Context, post *domain.Post) error {
-	return nil
+	oid, err := bson.ObjectIDFromHex(post.Id)
+	if err != nil {
+		return fmt.Errorf("invalid post id: %w", err)
+	}
+
+	postDTO, err := mongoDTO.FromPostCoreToDTO(post)
+	if err != nil {
+		return err
+	}
+
+	_, err = p.collection.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{
+		"$set": bson.M{
+			"title":         postDTO.Title,
+			"message":       postDTO.Message,
+			"selected_file": postDTO.SelectedFile,
+		},
+	})
+
+	return err
 }
 
 func (p *postRepository) ToggleLike(ctx context.Context, postId, userId string) error {

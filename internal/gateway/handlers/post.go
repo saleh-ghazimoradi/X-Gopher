@@ -70,7 +70,38 @@ func (p *PostHandler) GetAllPosts(w http.ResponseWriter, r *http.Request) {}
 func (p *PostHandler) GetPostsUsersBySearch(w http.ResponseWriter, r *http.Request) {}
 
 func (p *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
+	userId, exists := utils.UserIdFromContext(r.Context())
+	if !exists {
+		helper.BadRequestResponse(w, "Invalid user id", errors.New("invalid user id"))
+		return
+	}
 
+	postId := httprouter.ParamsFromContext(r.Context()).ByName("id")
+	if postId == "" {
+		helper.BadRequestResponse(w, "Invalid post id", errors.New("invalid post id"))
+		return
+	}
+
+	var payload dto.UpdatePostReq
+	if err := helper.ReadJSON(w, r, &payload); err != nil {
+		helper.BadRequestResponse(w, "Invalid given payload", err)
+		return
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateUpdatePostReq(v, &payload)
+	if !v.Valid() {
+		helper.FailedValidationResponse(w, "Invalid payload")
+		return
+	}
+
+	post, err := p.postService.UpdatePost(r.Context(), postId, userId, &payload)
+	if err != nil {
+		helper.InternalServerError(w, "Failed to update post", err)
+		return
+	}
+
+	helper.CreatedResponse(w, "Post successfully updated", post)
 }
 
 func (p *PostHandler) CommentPost(w http.ResponseWriter, r *http.Request) {}
