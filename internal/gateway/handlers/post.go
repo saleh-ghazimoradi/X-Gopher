@@ -28,6 +28,13 @@ func (p *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	v := helper.NewValidator()
+	dto.ValidateCreatePostReq(v, &payload)
+	if !v.Valid() {
+		helper.FailedValidationResponse(w, "Invalid payload")
+		return
+	}
+
 	post, err := p.postService.CreatePost(r.Context(), userId, &payload)
 	if err != nil {
 		helper.InternalServerError(w, "Failed to create post", err)
@@ -62,7 +69,9 @@ func (p *PostHandler) GetAllPosts(w http.ResponseWriter, r *http.Request) {}
 
 func (p *PostHandler) GetPostsUsersBySearch(w http.ResponseWriter, r *http.Request) {}
 
-func (p *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {}
+func (p *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
+
+}
 
 func (p *PostHandler) CommentPost(w http.ResponseWriter, r *http.Request) {}
 
