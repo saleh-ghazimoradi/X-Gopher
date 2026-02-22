@@ -12,6 +12,6 @@ func validateComment(v *helper.Validator, value string) {
 	v.Check(len(value) <= 500, "value", "must not exceed 500 characters")
 }
 
-func ValidateComment(v *helper.Validator, req *CommentReq) {
+func ValidateCommentReq(v *helper.Validator, req *CommentReq) {
 	validateComment(v, req.Value)
 }
