@@ -147,9 +147,62 @@ func (p *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	helper.CreatedResponse(w, "Post successfully updated", post)
 }
 
-func (p *PostHandler) CommentPost(w http.ResponseWriter, r *http.Request) {}
+func (p *PostHandler) CommentPost(w http.ResponseWriter, r *http.Request) {
+	userId, exists := utils.UserIdFromContext(r.Context())
+	if !exists {
+		helper.BadRequestResponse(w, "Invalid user id", errors.New("invalid user id"))
+		return
+	}
 
-func (p *PostHandler) LikePost(w http.ResponseWriter, r *http.Request) {}
+	postId := httprouter.ParamsFromContext(r.Context()).ByName("id")
+	if postId == "" {
+		helper.BadRequestResponse(w, "Invalid post id", errors.New("invalid post id"))
+		return
+	}
+
+	var payload dto.CommentReq
+	if err := helper.ReadJSON(w, r, &payload); err != nil {
+		helper.BadRequestResponse(w, "Invalid given payload", err)
+		return
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateCommentReq(v, &payload)
+	if !v.Valid() {
+		helper.FailedValidationResponse(w, "Invalid payload")
+		return
+	}
+
+	post, err := p.postService.CommentPost(r.Context(), postId, userId, &payload)
+	if err != nil {
+		helper.InternalServerError(w, "Failed to comment post", err)
+		return
+	}
+
+	helper.SuccessResponse(w, "Comment successfully added", post)
+}
+
+func (p *PostHandler) LikePost(w http.ResponseWriter, r *http.Request) {
+	userId, exists := utils.UserIdFromContext(r.Context())
+	if !exists {
+		helper.BadRequestResponse(w, "Invalid user id", errors.New("invalid user id"))
+		return
+	}
+
+	postId := httprouter.ParamsFromContext(r.Context()).ByName("id")
+	if postId == "" {
+		helper.BadRequestResponse(w, "Invalid post id", errors.New("invalid post id"))
+		return
+	}
+
+	post, err := p.postService.LikePost(r.Context(), postId, userId)
+	if err != nil {
+		helper.InternalServerError(w, "Failed to like post", err)
+		return
+	}
+
+	helper.CreatedResponse(w, "Like toggled successfully", post)
+}
 
 func (p *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {}
 

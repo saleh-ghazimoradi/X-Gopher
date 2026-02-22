@@ -6,6 +6,7 @@ import (
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/domain"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/dto"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/repository"
+	"slices"
 	"time"
 )
 
@@ -14,12 +15,15 @@ type PostService interface {
 	GetPostById(ctx context.Context, id string) (*dto.PostResp, error)
 	GetPostsUsersBySearch(ctx context.Context, query string) (map[string]any, error)
 	GetAllPosts(ctx context.Context, userId string, page, limit int) ([]*dto.PostResp, int64, error)
+	CommentPost(ctx context.Context, postId, userId string, input *dto.CommentReq) (*dto.PostResp, error)
+	LikePost(ctx context.Context, postId, userId string) (*dto.PostResp, error)
 	UpdatePost(ctx context.Context, id, userId string, input *dto.UpdatePostReq) (*dto.PostResp, error)
 }
 
 type postService struct {
-	userRepository repository.UserRepository
-	postRepository repository.PostRepository
+	userRepository    repository.UserRepository
+	commentRepository repository.CommentRepository
+	postRepository    repository.PostRepository
 }
 
 func (p *postService) CreatePost(ctx context.Context, creatorId string, input *dto.CreatePostReq) (*dto.PostResp, error) {
@@ -115,6 +119,46 @@ func (p *postService) GetAllPosts(ctx context.Context, userId string, page, limi
 	return resp, total, nil
 }
 
+func (p *postService) CommentPost(ctx context.Context, postId, userId string, input *dto.CommentReq) (*dto.PostResp, error) {
+	comment := &domain.Comment{
+		PostId:    postId,
+		UserId:    userId,
+		Value:     input.Value,
+		CreatedAt: time.Now(),
+	}
+
+	if err := p.commentRepository.CreateComment(ctx, comment); err != nil {
+		return nil, fmt.Errorf("failed to create comment: %w", err)
+	}
+
+	if err := p.postRepository.AddComment(ctx, postId, comment.Id); err != nil {
+		return nil, fmt.Errorf("failed to add comment: %w", err)
+	}
+
+	post, _ := p.postRepository.GetPostById(ctx, postId)
+	return p.toPostResp(post), nil
+}
+
+func (p *postService) LikePost(ctx context.Context, postId, userId string) (*dto.PostResp, error) {
+	post, err := p.postRepository.GetPostById(ctx, postId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get post: %w", err)
+	}
+
+	if slices.Contains(post.Likes, userId) {
+		post.Likes = removeString(post.Likes, userId)
+	} else {
+		post.Likes = append(post.Likes, userId)
+		// TODO: add notification here later
+	}
+
+	if err := p.postRepository.ToggleLike(ctx, postId, userId); err != nil {
+		return nil, fmt.Errorf("failed to toggle like: %w", err)
+	}
+
+	return p.toPostResp(post), nil
+}
+
 func (p *postService) UpdatePost(ctx context.Context, id, userId string, input *dto.UpdatePostReq) (*dto.PostResp, error) {
 	post, err := p.postRepository.GetPostById(ctx, id)
 	if err != nil {
@@ -159,9 +203,10 @@ func (p *postService) toPostResp(input *domain.Post) *dto.PostResp {
 	}
 }
 
-func NewPostService(userRepository repository.UserRepository, postRepository repository.PostRepository) PostService {
+func NewPostService(userRepository repository.UserRepository, commentRepository repository.CommentRepository, postRepository repository.PostRepository) PostService {
 	return &postService{
-		userRepository: userRepository,
-		postRepository: postRepository,
+		userRepository:    userRepository,
+		commentRepository: commentRepository,
+		postRepository:    postRepository,
 	}
 }

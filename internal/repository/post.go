@@ -86,6 +86,13 @@ func (p *postRepository) UpdatePost(ctx context.Context, post *domain.Post) erro
 }
 
 func (p *postRepository) ToggleLike(ctx context.Context, postId, userId string) error {
+	oid, err := bson.ObjectIDFromHex(postId)
+	if err != nil {
+		return fmt.Errorf("invalid post id: %w", err)
+	}
+	_, err = p.collection.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{
+		"$addToSet": bson.M{"likes": userId},
+	})
 	return nil
 }
 
