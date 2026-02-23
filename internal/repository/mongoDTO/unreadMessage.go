@@ -18,23 +18,23 @@ func FromUnreadMessageCoreToDTO(input *domain.UnreadMessage) (*UnreadMessage, er
 	var objectId bson.ObjectID
 	var err error
 
-	if input.SenderId != "" {
-		objectId, err = bson.ObjectIDFromHex(input.SenderId)
+	if input.Id != "" {
+		objectId, err = bson.ObjectIDFromHex(input.Id)
 		if err != nil {
-			return nil, fmt.Errorf("invalid unread message id")
+			return nil, fmt.Errorf("invalid unread message id: %w", err)
 		}
 	} else {
 		objectId = bson.NewObjectID()
 	}
 
-	senderDTO, err := bson.ObjectIDFromHex(input.ReceiverId)
+	senderDTO, err := bson.ObjectIDFromHex(input.SenderId)
 	if err != nil {
-		return nil, fmt.Errorf("invalid sender Id")
+		return nil, fmt.Errorf("invalid sender id: %w", err)
 	}
 
 	receiverDTO, err := bson.ObjectIDFromHex(input.ReceiverId)
 	if err != nil {
-		return nil, fmt.Errorf("invalid receiver Id")
+		return nil, fmt.Errorf("invalid receiver id: %w", err)
 	}
 
 	return &UnreadMessage{
