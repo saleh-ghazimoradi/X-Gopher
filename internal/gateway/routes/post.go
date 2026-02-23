@@ -23,8 +23,9 @@ func (p *PostRoute) PostRoutes(router *httprouter.Router) {
 	router.Handler(http.MethodPatch, "/v1/post/:id/like", p.wrapAuth(p.postHandler.LikePost))
 	router.Handler(http.MethodDelete, "/v1/post/:id", p.wrapAuth(p.postHandler.DeletePost))
 	router.Handler(http.MethodDelete, "/v1/comments/:postId/comments/:commentId", p.wrapAuth(p.postHandler.DeleteComment))
-
 }
+
+//TODO: Never do forget to fix the issue of the comment, when it's created, instead of the comment as string, the comment ID is stored in the post. And while deleting a comment from a post, the comment is removed from the comment collection yet it's not removed from the post and stays there as id.
 
 func (p *PostRoute) wrapAuth(handler http.HandlerFunc) http.Handler {
 	return p.middlewares.Authenticate(handler)

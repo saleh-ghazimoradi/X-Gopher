@@ -18,6 +18,7 @@ type PostRepository interface {
 	ToggleLike(ctx context.Context, postId, userId string) error
 	AddComment(ctx context.Context, postId, commentId string) error
 	DeletePost(ctx context.Context, id string) error
+	RemoveCommentFromPost(ctx context.Context, postId, commentId string) error
 	GetFeedPosts(ctx context.Context, creatorIds []string, page, limit int) ([]*domain.Post, int64, error)
 	SearchPosts(ctx context.Context, query string) ([]*domain.Post, error)
 }
@@ -112,7 +113,39 @@ func (p *postRepository) AddComment(ctx context.Context, postId, commentId strin
 }
 
 func (p *postRepository) DeletePost(ctx context.Context, id string) error {
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return fmt.Errorf("invalid post id: %w", err)
+	}
+	_, err = p.collection.DeleteOne(ctx, bson.M{"_id": oid})
+	if err != nil {
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			return ErrRecordNotFound
+		default:
+			return err
+		}
+	}
 	return nil
+}
+
+func (p *postRepository) RemoveCommentFromPost(ctx context.Context, postId, commentId string) error {
+	postOid, err := bson.ObjectIDFromHex(postId)
+	if err != nil {
+		return fmt.Errorf("invalid post id: %w", err)
+	}
+
+	commentOid, err := bson.ObjectIDFromHex(commentId)
+	if err != nil {
+		return fmt.Errorf("invalid comment id: %w", err)
+	}
+
+	_, err = p.collection.UpdateOne(ctx,
+		bson.M{"_id": postOid},
+		bson.M{"$pull": bson.M{"comments": commentOid}},
+	)
+	return err
+
 }
 
 func (p *postRepository) GetFeedPosts(ctx context.Context, creatorIds []string, page, limit int) ([]*domain.Post, int64, error) {

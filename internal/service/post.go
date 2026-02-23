@@ -18,6 +18,8 @@ type PostService interface {
 	CommentPost(ctx context.Context, postId, userId string, input *dto.CommentReq) (*dto.PostResp, error)
 	LikePost(ctx context.Context, postId, userId string) (*dto.PostResp, error)
 	UpdatePost(ctx context.Context, id, userId string, input *dto.UpdatePostReq) (*dto.PostResp, error)
+	DeletePost(ctx context.Context, postId, userId string) error
+	DeleteComment(ctx context.Context, postId, commentId, userId string) error
 }
 
 type postService struct {
@@ -186,6 +188,43 @@ func (p *postService) UpdatePost(ctx context.Context, id, userId string, input *
 	}
 
 	return p.toPostResp(post), nil
+}
+
+func (p *postService) DeletePost(ctx context.Context, postId, userId string) error {
+	post, err := p.postRepository.GetPostById(ctx, postId)
+	if err != nil {
+		return err
+	}
+
+	if post.Creator != userId {
+		return fmt.Errorf("post creator does not match")
+	}
+
+	return p.postRepository.DeletePost(ctx, postId)
+}
+
+func (p *postService) DeleteComment(ctx context.Context, postId, commentId, userId string) error {
+	comment, err := p.commentRepository.GetCommentById(ctx, commentId)
+	if err != nil {
+		return err
+	}
+
+	post, err := p.postRepository.GetPostById(ctx, postId)
+	if err != nil {
+		return err
+	}
+
+	if comment.UserId != userId && post.Creator != userId {
+		return repository.ErrUnauthorized
+	}
+
+	if err := p.commentRepository.DeleteComment(ctx, commentId); err != nil {
+		return err
+	}
+
+	_ = p.postRepository.RemoveCommentFromPost(ctx, postId, commentId)
+
+	return nil
 }
 
 func (p *postService) toPostResp(input *domain.Post) *dto.PostResp {

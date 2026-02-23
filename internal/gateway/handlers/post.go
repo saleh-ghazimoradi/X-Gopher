@@ -204,9 +204,62 @@ func (p *PostHandler) LikePost(w http.ResponseWriter, r *http.Request) {
 	helper.CreatedResponse(w, "Like toggled successfully", post)
 }
 
-func (p *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {}
+func (p *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
+	userId, exists := utils.UserIdFromContext(r.Context())
+	if !exists {
+		helper.BadRequestResponse(w, "Invalid user id", errors.New("invalid user id"))
+		return
+	}
 
-func (p *PostHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {}
+	postId := httprouter.ParamsFromContext(r.Context()).ByName("id")
+	if postId == "" {
+		helper.BadRequestResponse(w, "Invalid post id", errors.New("invalid post id"))
+		return
+	}
+
+	if err := p.postService.DeletePost(r.Context(), postId, userId); err != nil {
+		helper.InternalServerError(w, "Failed to delete post", err)
+		return
+	}
+
+	helper.SuccessResponse(w, "Post successfully deleted", nil)
+}
+
+func (p *PostHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
+	userId, exists := utils.UserIdFromContext(r.Context())
+	if !exists {
+		helper.BadRequestResponse(w, "Invalid user id from token", nil)
+		return
+	}
+
+	postId := httprouter.ParamsFromContext(r.Context()).ByName("postId")
+	if postId == "" {
+		helper.BadRequestResponse(w, "Invalid post id", errors.New("invalid post id"))
+		return
+	}
+
+	commentId := httprouter.ParamsFromContext(r.Context()).ByName("commentId")
+	if commentId == "" {
+		helper.BadRequestResponse(w, "Invalid comment id", errors.New("invalid comment id"))
+		return
+	}
+
+	if err := p.postService.DeleteComment(r.Context(), postId, commentId, userId); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrRecordNotFound):
+			helper.NotFoundResponse(w, "Comment or post not found")
+		case errors.Is(err, repository.ErrUnauthorized):
+			helper.ForbiddenResponse(w, "You are not authorized to delete this comment!")
+		case errors.Is(err, repository.ErrInvalidId):
+			helper.BadRequestResponse(w, "Invalid comment or post id", err)
+		default:
+			helper.InternalServerError(w, "Failed to delete comment", err)
+		}
+		return
+	}
+
+	helper.SuccessResponse(w, "Comment deleted successfully", nil)
+}
 
 func NewPostHandler(postService service.PostService) *PostHandler {
 	return &PostHandler{

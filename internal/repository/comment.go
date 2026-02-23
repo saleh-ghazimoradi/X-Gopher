@@ -12,6 +12,7 @@ import (
 
 type CommentRepository interface {
 	CreateComment(ctx context.Context, comment *domain.Comment) error
+	GetCommentById(ctx context.Context, id string) (*domain.Comment, error)
 	DeleteComment(ctx context.Context, id string) error
 }
 
@@ -35,6 +36,23 @@ func (c *commentRepository) CreateComment(ctx context.Context, comment *domain.C
 	}
 
 	return nil
+}
+
+func (c *commentRepository) GetCommentById(ctx context.Context, id string) (*domain.Comment, error) {
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, ErrInvalidId
+	}
+
+	var commentDTO mongoDTO.Comment
+	if err := c.collection.FindOne(ctx, bson.M{"_id": oid}).Decode(&commentDTO); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrRecordNotFound
+		}
+		return nil, err
+	}
+
+	return mongoDTO.FromCommentDTOToCore(&commentDTO), nil
 }
 
 func (c *commentRepository) DeleteComment(ctx context.Context, id string) error {
