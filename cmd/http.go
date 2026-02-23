@@ -88,23 +88,29 @@ var httpCmd = &cobra.Command{
 		userRepository := repository.NewUserRepository(mongodb, "user")
 		postRepository := repository.NewPostRepository(mongodb, "post")
 		commentRepository := repository.NewCommentRepository(mongodb, "comment")
+		messageRepository := repository.NewMessageRepository(mongodb, "message")
+		unreadMessageRepository := repository.NewUnreadMessageRepository(mongodb, "unreadMessage")
 
 		authService := service.NewAuthService(cfg, userRepository, tokenRepository)
 		userService := service.NewUserService(userRepository)
 		postService := service.NewPostService(userRepository, commentRepository, postRepository)
+		messageService := service.NewMessageService(messageRepository, unreadMessageRepository)
 
 		authHandler := handlers.NewAuthHandler(authService)
 		userHandler := handlers.NewUserHandler(userService)
 		postHandler := handlers.NewPostHandler(postService)
+		messageHandler := handlers.NewMessageHandler(messageService)
 
 		authRoute := routes.NewAuthRoute(authHandler)
 		userRoute := routes.NewUserRoute(middleware, userHandler)
 		postRoute := routes.NewPostRoute(middleware, postHandler)
+		messageRoute := routes.NewMessageRoute(messageHandler)
 
 		register := routes.NewRegister(
 			routes.WithAuthRoute(authRoute),
 			routes.WithUserRoute(userRoute),
 			routes.WithPostRoute(postRoute),
+			routes.WithMessageRoute(messageRoute),
 			routes.WithMiddlewares(middleware),
 		)
 

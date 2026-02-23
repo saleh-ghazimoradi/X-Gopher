@@ -10,10 +10,11 @@ import (
 )
 
 type Register struct {
-	authRoute   *AuthRoute
-	userRoute   *UserRoute
-	postRoute   *PostRoute
-	middlewares *middlewares.Middleware
+	authRoute    *AuthRoute
+	userRoute    *UserRoute
+	postRoute    *PostRoute
+	messageRoute *MessageRoute
+	middlewares  *middlewares.Middleware
 }
 
 type Options func(*Register)
@@ -33,6 +34,12 @@ func WithUserRoute(userRoute *UserRoute) Options {
 func WithPostRoute(postRoute *PostRoute) Options {
 	return func(r *Register) {
 		r.postRoute = postRoute
+	}
+}
+
+func WithMessageRoute(messageRoute *MessageRoute) Options {
+	return func(r *Register) {
+		r.messageRoute = messageRoute
 	}
 }
 
@@ -62,6 +69,7 @@ func (r *Register) RegisterRoutes() http.Handler {
 	r.authRoute.AuthRoutes(router)
 	r.userRoute.UserRoutes(router)
 	r.postRoute.PostRoutes(router)
+	r.messageRoute.MessageRoutes(router)
 	return r.middlewares.Recover(r.middlewares.Logging(r.middlewares.CORS(r.middlewares.RateLimit(router))))
 }
 
