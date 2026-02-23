@@ -18,6 +18,7 @@ type Config struct {
 	HTTPServer  HTTPServer
 	JWT         JWT
 	RateLimiter RateLimiter
+	Redis       Redis
 }
 
 type Application struct {
@@ -35,6 +36,19 @@ type MongoDB struct {
 	MaxPoolSize uint64        `env:"MONGODB_MAX_POOL_SIZE"`
 	MinPoolSize uint64        `env:"MONGODB_MIN_POOL_SIZE"`
 	Timeout     time.Duration `env:"MONGODB_TIMEOUT"`
+}
+
+type Redis struct {
+	Host         string        `env:"REDIS_HOST"`
+	Port         string        `env:"REDIS_PORT"`
+	Password     string        `env:"REDIS_PASSWORD"`
+	DB           int           `env:"REDIS_DB"`
+	DialTimeout  time.Duration `env:"REDIS_DIAL_TIMEOUT"`
+	ReadTimeout  time.Duration `env:"REDIS_READ_TIMEOUT"`
+	WriteTimeout time.Duration `env:"REDIS_WRITE_TIMEOUT"`
+	PoolSize     int           `env:"REDIS_POOL_SIZE"`
+	PoolTimeout  time.Duration `env:"REDIS_POOL_TIMEOUT"`
+	RPM          int           `env:"REDIS_RPM"`
 }
 
 type HTTPServer struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/saleh-ghazimoradi/X-Gopher/config"
 	"github.com/saleh-ghazimoradi/X-Gopher/infra/mongodb"
+	"github.com/saleh-ghazimoradi/X-Gopher/infra/redis"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/gateway/handlers"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/gateway/middlewares"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/gateway/routes"
@@ -31,6 +32,30 @@ var httpCmd = &cobra.Command{
 			logger.Error("Failed to load configuration", "error", err)
 			os.Exit(1)
 		}
+
+		redisDB := redis.NewRedis(
+			redis.WithHost(cfg.Redis.Host),
+			redis.WithPort(cfg.Redis.Port),
+			redis.WithPassword(cfg.Redis.Password),
+			redis.WithDB(cfg.Redis.DB),
+			redis.WithDialTimeout(cfg.Redis.DialTimeout),
+			redis.WithReadTimeout(cfg.Redis.ReadTimeout),
+			redis.WithWriteTimeout(cfg.Redis.WriteTimeout),
+			redis.WithPoolSize(cfg.Redis.PoolSize),
+			redis.WithPoolTimeout(cfg.Redis.PoolTimeout),
+		)
+
+		if err := redisDB.Ping(context.Background()); err != nil {
+			logger.Error("Failed to connect to redis", "error", err)
+		}
+
+		defer func() {
+			if err := redisDB.Close(context.Background()); err != nil {
+				logger.Error("Failed to close redis", "error", err)
+			}
+		}()
+
+		//redisClient := redisDB.Connect(context.Background())
 
 		mongo := mongodb.NewMongoDB(
 			mongodb.WithHost(cfg.MongoDB.Host),
