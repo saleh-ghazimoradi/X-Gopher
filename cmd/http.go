@@ -90,27 +90,32 @@ var httpCmd = &cobra.Command{
 		commentRepository := repository.NewCommentRepository(mongodb, "comment")
 		messageRepository := repository.NewMessageRepository(mongodb, "message")
 		unreadMessageRepository := repository.NewUnreadMessageRepository(mongodb, "unreadMessage")
+		notificationRepository := repository.NewNotificationRepository(mongodb, "notification")
 
 		authService := service.NewAuthService(cfg, userRepository, tokenRepository)
-		userService := service.NewUserService(userRepository)
-		postService := service.NewPostService(userRepository, commentRepository, postRepository)
+		userService := service.NewUserService(userRepository, notificationRepository)
+		postService := service.NewPostService(userRepository, commentRepository, postRepository, notificationRepository)
 		messageService := service.NewMessageService(messageRepository, unreadMessageRepository)
+		notificationService := service.NewNotificationService(notificationRepository)
 
 		authHandler := handlers.NewAuthHandler(authService)
 		userHandler := handlers.NewUserHandler(userService)
 		postHandler := handlers.NewPostHandler(postService)
 		messageHandler := handlers.NewMessageHandler(messageService)
+		notificationHandler := handlers.NewNotificationHandler(notificationService)
 
 		authRoute := routes.NewAuthRoute(authHandler)
 		userRoute := routes.NewUserRoute(middleware, userHandler)
 		postRoute := routes.NewPostRoute(middleware, postHandler)
 		messageRoute := routes.NewMessageRoute(messageHandler)
+		notificationRoute := routes.NewNotificationRoute(notificationHandler)
 
 		register := routes.NewRegister(
 			routes.WithAuthRoute(authRoute),
 			routes.WithUserRoute(userRoute),
 			routes.WithPostRoute(postRoute),
 			routes.WithMessageRoute(messageRoute),
+			routes.WithNotificationRoute(notificationRoute),
 			routes.WithMiddlewares(middleware),
 		)
 

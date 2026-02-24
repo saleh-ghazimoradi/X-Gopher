@@ -7,6 +7,7 @@ import (
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/dto"
 	"github.com/saleh-ghazimoradi/X-Gopher/internal/repository"
 	"slices"
+	"time"
 )
 
 type UserService interface {
@@ -18,7 +19,8 @@ type UserService interface {
 }
 
 type userService struct {
-	userRepository repository.UserRepository
+	userRepository         repository.UserRepository
+	notificationRepository repository.NotificationRepository
 }
 
 func (u *userService) GetUserById(ctx context.Context, id string) (*dto.UserResp, error) {
@@ -131,6 +133,21 @@ func (u *userService) ToggleFollow(ctx context.Context, currentUserId, targetUse
 	} else {
 		target.Followers = append(target.Followers, currentUserId)
 		current.Following = append(current.Following, targetUserId)
+
+		notif := &domain.Notification{
+			SenderId:   currentUserId,
+			ReceiverId: targetUserId,
+			TargetId:   currentUserId,
+			Details:    current.FirstName + " " + current.LastName + " started following you!",
+			IsRead:     false,
+			CreatedAt:  time.Now(),
+			NotificationUser: domain.NotificationUser{
+				Name:   current.FirstName + " " + current.LastName,
+				Avatar: current.ImageUrl,
+			},
+		}
+		_ = u.notificationRepository.Create(ctx, notif)
+
 		if err := u.userRepository.Follow(ctx, currentUserId, targetUserId); err != nil {
 			return nil, fmt.Errorf("failed to follow: %w", err)
 		}
@@ -168,8 +185,9 @@ func (u *userService) toUserResp(input *domain.User) *dto.UserResp {
 	}
 }
 
-func NewUserService(userRepository repository.UserRepository) UserService {
+func NewUserService(userRepository repository.UserRepository, notificationRepository repository.NotificationRepository) UserService {
 	return &userService{
-		userRepository: userRepository,
+		userRepository:         userRepository,
+		notificationRepository: notificationRepository,
 	}
 }

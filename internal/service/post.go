@@ -23,9 +23,10 @@ type PostService interface {
 }
 
 type postService struct {
-	userRepository    repository.UserRepository
-	commentRepository repository.CommentRepository
-	postRepository    repository.PostRepository
+	userRepository         repository.UserRepository
+	commentRepository      repository.CommentRepository
+	postRepository         repository.PostRepository
+	notificationRepository repository.NotificationRepository
 }
 
 func (p *postService) CreatePost(ctx context.Context, creatorId string, input *dto.CreatePostReq) (*dto.PostResp, error) {
@@ -137,7 +138,25 @@ func (p *postService) CommentPost(ctx context.Context, postId, userId string, in
 		return nil, fmt.Errorf("failed to add comment: %w", err)
 	}
 
-	post, _ := p.postRepository.GetPostById(ctx, postId)
+	post, err := p.postRepository.GetPostById(ctx, postId)
+	if err == nil && post.Creator != userId {
+		actor, _ := p.userRepository.GetUserById(ctx, userId)
+		notif := &domain.Notification{
+			SenderId:   userId,
+			ReceiverId: post.Creator,
+			TargetId:   postId,
+			Details:    actor.FirstName + " " + actor.LastName + " Commented on your Post",
+			IsRead:     false,
+			CreatedAt:  time.Now(),
+			NotificationUser: domain.NotificationUser{
+				Name:   actor.FirstName + " " + actor.LastName,
+				Avatar: actor.ImageUrl,
+			},
+		}
+		_ = p.notificationRepository.Create(ctx, notif)
+	}
+
+	post, _ = p.postRepository.GetPostById(ctx, postId)
 	return p.toPostResp(post), nil
 }
 
@@ -147,11 +166,26 @@ func (p *postService) LikePost(ctx context.Context, postId, userId string) (*dto
 		return nil, fmt.Errorf("failed to get post: %w", err)
 	}
 
-	if slices.Contains(post.Likes, userId) {
-		post.Likes = removeString(post.Likes, userId)
-	} else {
+	isLike := !slices.Contains(post.Likes, userId)
+
+	if isLike {
 		post.Likes = append(post.Likes, userId)
-		// TODO: add notification here later
+		actor, _ := p.userRepository.GetUserById(ctx, userId)
+		notif := &domain.Notification{
+			SenderId:   userId,
+			ReceiverId: post.Creator,
+			TargetId:   postId,
+			Details:    actor.FirstName + " " + actor.LastName + " Liked your Post",
+			IsRead:     false,
+			CreatedAt:  time.Now(),
+			NotificationUser: domain.NotificationUser{
+				Name:   actor.FirstName + " " + actor.LastName,
+				Avatar: actor.ImageUrl,
+			},
+		}
+		_ = p.notificationRepository.Create(ctx, notif)
+	} else {
+		post.Likes = removeString(post.Likes, userId)
 	}
 
 	if err := p.postRepository.ToggleLike(ctx, postId, userId); err != nil {
@@ -242,10 +276,11 @@ func (p *postService) toPostResp(input *domain.Post) *dto.PostResp {
 	}
 }
 
-func NewPostService(userRepository repository.UserRepository, commentRepository repository.CommentRepository, postRepository repository.PostRepository) PostService {
+func NewPostService(userRepository repository.UserRepository, commentRepository repository.CommentRepository, postRepository repository.PostRepository, notificationRepository repository.NotificationRepository) PostService {
 	return &postService{
-		userRepository:    userRepository,
-		commentRepository: commentRepository,
-		postRepository:    postRepository,
+		userRepository:         userRepository,
+		commentRepository:      commentRepository,
+		postRepository:         postRepository,
+		notificationRepository: notificationRepository,
 	}
 }
