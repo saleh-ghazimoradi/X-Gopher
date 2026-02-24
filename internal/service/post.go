@@ -181,10 +181,9 @@ func (p *postService) LikePost(ctx context.Context, postId, userId string) (*dto
 		return nil, fmt.Errorf("failed to get post: %w", err)
 	}
 
-	isLike := !slices.Contains(post.Likes, userId)
+	isLiking := !slices.Contains(post.Likes, userId)
 
-	if isLike {
-		post.Likes = append(post.Likes, userId)
+	if isLiking {
 		actor, _ := p.userRepository.GetUserById(ctx, userId)
 		notif := &domain.Notification{
 			SenderId:   userId,
@@ -199,12 +198,15 @@ func (p *postService) LikePost(ctx context.Context, postId, userId string) (*dto
 			},
 		}
 		_ = p.notificationRepository.Create(ctx, notif)
-	} else {
-		post.Likes = removeString(post.Likes, userId)
 	}
 
 	if err := p.postRepository.ToggleLike(ctx, postId, userId); err != nil {
 		return nil, fmt.Errorf("failed to toggle like: %w", err)
+	}
+
+	post, err = p.postRepository.GetPostById(ctx, postId)
+	if err != nil {
+		return nil, err
 	}
 
 	return p.toPostResp(post), nil

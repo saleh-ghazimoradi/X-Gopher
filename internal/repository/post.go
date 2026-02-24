@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"slices"
 )
 
 type PostRepository interface {
@@ -117,10 +118,21 @@ func (p *postRepository) ToggleLike(ctx context.Context, postId, userId string) 
 	if err != nil {
 		return fmt.Errorf("invalid post id: %w", err)
 	}
-	_, err = p.collection.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{
-		"$addToSet": bson.M{"likes": userId},
-	})
-	return nil
+
+	var current mongoDTO.Post
+	if err := p.collection.FindOne(ctx, bson.M{"_id": oid}).Decode(&current); err != nil {
+		return err
+	}
+
+	update := bson.M{}
+	if slices.Contains(current.Likes, userId) {
+		update["$pull"] = bson.M{"likes": userId}
+	} else {
+		update["$addToSet"] = bson.M{"likes": userId}
+	}
+
+	_, err = p.collection.UpdateOne(ctx, bson.M{"_id": oid}, update)
+	return err
 }
 
 func (p *postRepository) AddComment(ctx context.Context, postId, commentId string) error {
@@ -161,17 +173,11 @@ func (p *postRepository) RemoveCommentFromPost(ctx context.Context, postId, comm
 		return fmt.Errorf("invalid post id: %w", err)
 	}
 
-	commentOid, err := bson.ObjectIDFromHex(commentId)
-	if err != nil {
-		return fmt.Errorf("invalid comment id: %w", err)
-	}
-
 	_, err = p.collection.UpdateOne(ctx,
 		bson.M{"_id": postOid},
-		bson.M{"$pull": bson.M{"comments": commentOid}},
+		bson.M{"$pull": bson.M{"comments": commentId}},
 	)
 	return err
-
 }
 
 func (p *postRepository) GetFeedPosts(ctx context.Context, creatorIds []string, page, limit int) ([]*domain.Post, int64, error) {
