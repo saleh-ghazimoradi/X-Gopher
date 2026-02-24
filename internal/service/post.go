@@ -15,6 +15,7 @@ type PostService interface {
 	GetPostById(ctx context.Context, id string) (*dto.PostResp, error)
 	GetPostsUsersBySearch(ctx context.Context, query string) (map[string]any, error)
 	GetAllPosts(ctx context.Context, userId string, page, limit int) ([]*dto.PostResp, int64, error)
+	GetPostsByCreator(ctx context.Context, creatorId string) ([]*dto.PostResp, error)
 	CommentPost(ctx context.Context, postId, userId string, input *dto.CommentReq) (*dto.PostResp, error)
 	LikePost(ctx context.Context, postId, userId string) (*dto.PostResp, error)
 	UpdatePost(ctx context.Context, id, userId string, input *dto.UpdatePostReq) (*dto.PostResp, error)
@@ -120,6 +121,20 @@ func (p *postService) GetAllPosts(ctx context.Context, userId string, page, limi
 	}
 
 	return resp, total, nil
+}
+
+func (p *postService) GetPostsByCreator(ctx context.Context, creatorId string) ([]*dto.PostResp, error) {
+	posts, err := p.postRepository.GetPostsByCreator(ctx, creatorId)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]*dto.PostResp, len(posts))
+	for i, post := range posts {
+		resp[i] = p.toPostResp(post)
+	}
+
+	return resp, nil
 }
 
 func (p *postService) CommentPost(ctx context.Context, postId, userId string, input *dto.CommentReq) (*dto.PostResp, error) {

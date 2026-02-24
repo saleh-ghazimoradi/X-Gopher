@@ -13,6 +13,7 @@ import (
 
 type UserHandler struct {
 	userService service.UserService
+	postService service.PostService
 }
 
 func (u *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +34,15 @@ func (u *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	helper.SuccessResponse(w, "user successfully retrieved", user)
+	posts, err := u.postService.GetPostsByCreator(r.Context(), id)
+	if err != nil {
+		posts = []*dto.PostResp{}
+	}
+
+	helper.SuccessResponse(w, "user successfully retrieved", map[string]any{
+		"user":  user,
+		"posts": posts,
+	})
 }
 
 func (u *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
@@ -147,8 +156,9 @@ func (u *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "User deleted successfully", nil)
 }
 
-func NewUserHandler(userService service.UserService) *UserHandler {
+func NewUserHandler(userService service.UserService, postService service.PostService) *UserHandler {
 	return &UserHandler{
 		userService: userService,
+		postService: postService,
 	}
 }

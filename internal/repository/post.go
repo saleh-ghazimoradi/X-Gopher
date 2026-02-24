@@ -14,6 +14,7 @@ import (
 type PostRepository interface {
 	CreatePost(ctx context.Context, post *domain.Post) error
 	GetPostById(ctx context.Context, id string) (*domain.Post, error)
+	GetPostsByCreator(ctx context.Context, creatorId string) ([]*domain.Post, error)
 	UpdatePost(ctx context.Context, post *domain.Post) error
 	ToggleLike(ctx context.Context, postId, userId string) error
 	AddComment(ctx context.Context, postId, commentId string) error
@@ -62,6 +63,31 @@ func (p *postRepository) GetPostById(ctx context.Context, id string) (*domain.Po
 	}
 
 	return mongoDTO.FromPostDTOToCore(&postDTO), nil
+}
+
+func (p *postRepository) GetPostsByCreator(ctx context.Context, creatorId string) ([]*domain.Post, error) {
+	filter := bson.M{"creator": creatorId}
+
+	opts := options.Find().
+		SetSort(bson.M{"_id": -1})
+
+	cursor, err := p.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var postsDTO []mongoDTO.Post
+	if err := cursor.All(ctx, &postsDTO); err != nil {
+		return nil, err
+	}
+
+	posts := make([]*domain.Post, len(postsDTO))
+	for i, dto := range postsDTO {
+		posts[i] = mongoDTO.FromPostDTOToCore(&dto)
+	}
+
+	return posts, nil
 }
 
 func (p *postRepository) UpdatePost(ctx context.Context, post *domain.Post) error {

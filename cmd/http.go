@@ -99,7 +99,7 @@ var httpCmd = &cobra.Command{
 		notificationService := service.NewNotificationService(notificationRepository)
 
 		authHandler := handlers.NewAuthHandler(authService)
-		userHandler := handlers.NewUserHandler(userService)
+		userHandler := handlers.NewUserHandler(userService, postService)
 		postHandler := handlers.NewPostHandler(postService)
 		messageHandler := handlers.NewMessageHandler(messageService)
 		notificationHandler := handlers.NewNotificationHandler(notificationService)
